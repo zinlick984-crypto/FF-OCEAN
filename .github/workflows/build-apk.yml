@@ -1,0 +1,45 @@
+
+name: Build REDS FF APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Extract project ZIP
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
+          test -n "$ZIP_FILE"
+          mkdir extracted
+          unzip -q "$ZIP_FILE" -d extracted
+          PROJECT_DIR=$(find extracted -name settings.gradle -type f -print -quit | xargs dirname)
+          test -n "$PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          gradle assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/REDS-FF.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: REDS-FF-APK
+          path: REDS-FF.apk
+          
